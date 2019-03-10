@@ -1,53 +1,22 @@
-#ifndef COROUTINE_H
-#define COROUTINE_H
+#ifndef C_COROUTINE_H
+#define C_COROUTINE_H
 
-#include <ucontext.h>
+#define COROUTINE_DEAD 0
+#define COROUTINE_READY 1
+#define COROUTINE_RUNNING 2
+#define COROUTINE_SUSPEND 3
 
-#define STACK_SZIE (1024*128)
-#define MAX_UTHREAD_SIZE   1024
-#define NULL 0
+struct schedule;  // 前置声明协程调度器struct schedule类型
 
-enum Coroutine_State{DEAD, READY, RUNNING, SUSPEND};
+typedef void (*coroutine_func)(struct schedule *, void *ud); // 声明一个函数指针类型
 
-struct schedule_;
+struct schedule * coroutine_open(void);   // 创建协程调度器
+void coroutine_close(struct schedule *);  // 关闭协程调度器
 
-typedef void (*coroutine_func)(struct schedule_* s, void *args);
+int coroutine_new(struct schedule *, coroutine_func, void *ud);   // 创建协程任务,将其加入调度器中
+void coroutine_resume(struct schedule *, int id);                 // 恢复协程号为id的协程任务
+int coroutine_status(struct schedule *, int id);                  // 根据协程任务id返回协程的当前状态
+int coroutine_running(struct schedule *);                         // 返回调度器S中正在running的协程任务id
+void coroutine_yield(struct schedule *);                          // 保存当前上下文后中断当前协程的执行
 
-typedef struct coroutine_
-{
-    coroutine_func func;
-    void *args;
-    ucontext_t ctx;
-    enum Coroutine_State state;
-    char stack[STACK_SZIE];
-}coroutine;
-
-typedef struct schedule_
-{
-    ucontext_t main;
-    int running_coroutine;
-    coroutine **coroutines;
-    int max_index;
-}schedule;
-
-// 用于执行目标函数
-static void main_func(schedule *s);
-// 创建调度器
-schedule* schedule_create();
-// 删除协程
-int delete_coroutine(schedule *s, int id);
-// 关闭调度器
-void schedule_close(schedule *s);
-// 查看状态
-enum Coroutine_State coroutine_status(schedule *s, int id);
-// 创建协程
-int coroutine_create(schedule *s, coroutine_func func, void *args);
-// 切换协程
-void coroutine_yield(schedule *s);
-// 恢复协程
-void coroutine_resume(schedule * s, int id);
-// 检查是否完全执行完成
-int schedule_finished(schedule *schedule);
-// 运行协程
-int coroutine_running(schedule * s, int id);
-#endif 
+#endif
